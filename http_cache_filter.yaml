@@ -1,0 +1,65 @@
+# apply a cache filter at `productpage` to act on cache headers in responses it
+# receives
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: productpage-cache-filter
+  namespace: default
+spec:
+  workloadSelector:
+    labels:
+      app: productpage
+  configPatches:
+    - applyTo: HTTP_FILTER
+      match:
+        context: SIDECAR_OUTBOUND
+        listener:
+          filterChain:
+            filter:
+              name: "envoy.filters.network.http_connection_manager"
+              subFilter:
+                name: "envoy.filters.http.router"
+      patch:
+        operation: INSERT_FIRST
+        value:
+          name: "envoy.filters.http.cache"
+          typed_config:
+            "@type": "type.googleapis.com/envoy.extensions.filters.http.cache.v3.CacheConfig"
+            typed_config:
+              "@type": "type.googleapis.com/envoy.extensions.http.cache.simple_http_cache.v3.SimpleHttpCacheConfig"
+---
+# add a 3-second cache header to each response produced by a `reviews` app
+# then add a timestamp to the body for easy visualization of the cache working
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: review-cache-header
+  namespace: default
+spec:
+  workloadSelector:
+    labels:
+      app: reviews
+  configPatches:
+  - applyTo: HTTP_FILTER
+    match:
+      context: SIDECAR_INBOUND
+      listener:
+        filterChain:
+          filter:
+            name: envoy.filters.network.http_connection_manager
+    patch:
+      operation: INSERT_FIRST
+      value: 
+        name: envoy.filters.http.lua
+        typed_config:
+          "@type": "type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua"
+          inlineCode: |
+            function envoy_on_response(response_handle)
+              response_handle:headers():add("cache-control", "max-age=3")
+              local body = response_handle:body()
+              local bodyString = tostring(body:getBytes(0, body:length()))
+
+              bodyString = string.gsub(bodyString, "Shakespeare.", "Shakespeare. By the way, timestamp: "..response_handle:timestampString())
+              response_handle:body():setBytes(bodyString)
+            end
+---
