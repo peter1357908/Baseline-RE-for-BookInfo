@@ -26,11 +26,16 @@ spec:
             function envoy_on_response(response_handle)
               -- replace all review text "entertaining" with "intermediate!!"
               local body = response_handle:body()
-              response_handle:logCritical("review, pre: "..body:length())
               local bodyString = tostring(body:getBytes(0, body:length()))
+
+              response_handle:logCritical("review, pre, length: "..body:length())
+              response_handle:logCritical("review, pre, body: "..bodyString)
+
               bodyString = string.gsub(bodyString, "entertaining", "intermediate!!")
               response_handle:body():setBytes(bodyString)
-              response_handle:logCritical("review, post: "..body:length())
+
+              response_handle:logCritical("review, post, length: "..body:length())
+              response_handle:logCritical("review, post, body: "..bodyString)
             end
 ---
 # replace text in the response to outbound requests from the `productpage` app.
@@ -61,9 +66,14 @@ spec:
             function envoy_on_response(response_handle)
               -- replace all review text "intermediate!!" with "REPLACED"
               local body = response_handle:body()
-              response_handle:logCritical("productpage, pre: "..body:length())
               local bodyString = tostring(body:getBytes(0, body:length()))
+
+              response_handle:logCritical("productpage, pre, length: "..body:length())
+              response_handle:logCritical("productpage, pre, body: "..bodyString)
+
               bodyString = string.gsub(bodyString, "intermediate!!", "REPLACED")
               response_handle:body():setBytes(bodyString)
-              response_handle:logCritical("productpage, post: "..body:length())
+              
+              response_handle:logCritical("productpage, post, length: "..body:length())
+              response_handle:logCritical("productpage, post, body: "..bodyString)
             end

@@ -1,4 +1,5 @@
 # license for lualzw (used in the Lua inlineCode)
+# https://github.com/Rochet2/lualzw/blob/master/lualzw.lua
 # --[[
 # MIT License
 
@@ -121,10 +122,13 @@ spec:
 
             function envoy_on_response(response_handle)
               local body = response_handle:body()
-              response_handle:logCritical("details, pre-compression: "..body:length())
               local bodyString = tostring(body:getBytes(0, body:length()))
+
+              response_handle:logCritical("details, pre-compression, length: "..body:length())
+
               response_handle:body():setBytes(compress(bodyString))
-              response_handle:logCritical("details, post-compression: "..body:length())
+
+              response_handle:logCritical("details, post-compression, length: "..body:length())
             end
 ---
 # compress the response to inbound requests to the `reviews` app.
@@ -225,10 +229,13 @@ spec:
 
             function envoy_on_response(response_handle)
               local body = response_handle:body()
-              response_handle:logCritical("review, pre-compression: "..body:length())
               local bodyString = tostring(body:getBytes(0, body:length()))
+
+              response_handle:logCritical("review, pre-compression, length: "..body:length())
+              
               response_handle:body():setBytes(compress(bodyString))
-              response_handle:logCritical("review, post-compression: "..body:length())
+
+              response_handle:logCritical("review, post-compression, length: "..body:length())
             end
 ---
 # decompress the response to outbound requests from the `productpage` app.
@@ -336,8 +343,14 @@ spec:
 
             function envoy_on_response(response_handle)
               local body = response_handle:body()
-              response_handle:logCritical("productpage, pre-decompression: "..body:length())
               local bodyString = tostring(body:getBytes(0, body:length()))
-              response_handle:body():setBytes(decompress(bodyString))
-              response_handle:logCritical("productpage, post-decompression: "..body:length())
+
+              response_handle:logCritical("productpage, pre-decompression, length: "..body:length())
+              response_handle:logCritical("productpage, pre-decompression, body: "..bodyString)
+
+              local decompressedBodyString = decompress(bodyString)
+              response_handle:body():setBytes(decompressedBodyString)
+
+              response_handle:logCritical("productpage, post-decompression, length: "..body:length())
+              response_handle:logCritical("productpage, post-decompression, body: "..decompressedBodyString)
             end
