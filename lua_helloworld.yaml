@@ -1,0 +1,69 @@
+# replace text in the response to inbound requests to the `reviews` app.
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: lua-review-replacement
+  namespace: default
+spec:
+  workloadSelector:
+    labels:
+      app: reviews
+  configPatches:
+  - applyTo: HTTP_FILTER
+    match:
+      context: SIDECAR_INBOUND
+      listener:
+        filterChain:
+          filter:
+            name: envoy.filters.network.http_connection_manager
+    patch:
+      operation: INSERT_FIRST
+      value: 
+        name: envoy.filters.http.lua
+        typed_config:
+          "@type": "type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua"
+          inlineCode: |
+            function envoy_on_response(response_handle)
+              -- replace all review text "entertaining" with "intermediate!!"
+              local body = response_handle:body()
+              response_handle:logCritical("review, pre: "..body:length())
+              local bodyString = tostring(body:getBytes(0, body:length()))
+              bodyString = string.gsub(bodyString, "entertaining", "intermediate!!")
+              response_handle:body():setBytes(bodyString)
+              response_handle:logCritical("review, post: "..body:length())
+            end
+---
+# replace text in the response to outbound requests from the `productpage` app.
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: lua-productpage-replacement
+  namespace: default
+spec:
+  workloadSelector:
+    labels:
+      app: productpage
+  configPatches:
+  - applyTo: HTTP_FILTER
+    match:
+      context: SIDECAR_OUTBOUND
+      listener:
+        filterChain:
+          filter:
+            name: envoy.filters.network.http_connection_manager
+    patch:
+      operation: INSERT_FIRST
+      value: 
+        name: envoy.filters.http.lua
+        typed_config:
+          "@type": "type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua"
+          inlineCode: |
+            function envoy_on_response(response_handle)
+              -- replace all review text "intermediate!!" with "REPLACED"
+              local body = response_handle:body()
+              response_handle:logCritical("productpage, pre: "..body:length())
+              local bodyString = tostring(body:getBytes(0, body:length()))
+              bodyString = string.gsub(bodyString, "intermediate!!", "REPLACED")
+              response_handle:body():setBytes(bodyString)
+              response_handle:logCritical("productpage, post: "..body:length())
+            end
